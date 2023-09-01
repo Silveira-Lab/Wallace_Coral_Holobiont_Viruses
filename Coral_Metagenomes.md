@@ -14,6 +14,7 @@
 12. Virus Sequence Similarity Tree - <i>GL-UVAB</i>
 13. Virus Taxonomy - <i>vConTACT2.0</i>
 14. Bacterial and Viral Abundances - <i>Smalt</i>
+15. Virulence Factor Analysis - <i>BlastP</i>
  
 # 1. Download Coral Metagenomes
 ```bash
@@ -368,4 +369,36 @@ for R1 in $reads/*_R1.fastq; do
 	rm $out/${name}.align.bam
 	samtools index $out/${name}.align.sort.bam
 done
+```
+
+# 15. Virulence Factor Analysis
+```bash
+Blast Documentation: https://rnnh.github.io/bioinfo-notebook/docs/blast.html#the-command-line-version-of-blast
+```
+```bash
+# Download VFDB
+wget https://figshare.com/ndownloader/files/15347432
+mv 15347432 FileS1_VF_DB.fasta
+
+# Pull out seq names
+grep '>' FileS1_VF_DB.fasta > metadata.tsv
+
+# Tidy up the sequence names
+sed -e 's/ /_/g' FileS1_VF_DB.fasta | sed -e 's/(//g' | sed -e 's/)//g' | sed -e 's/\[//g' | sed -e 's/\]//g' | sed -e 's/__/_/g' | sed  's/gb|/gb/g' > VFDB.faa
+```
+```bash
+# Make Blast DB out of VFDB
+out=/path/to/output/directory
+wd=/path/to/VFDB/directory
+for f in $wd/VFDB.faa; do
+	name=$(basename $f .faa)
+	makeblastdb -in ${f} -dbtype prot -out $out/${name}_db
+done
+```
+```bash
+# Run BlastP
+wd=/path/to/my/DB
+db=/path/to/VFDB/blastdb
+out=/path/to/output/directory
+blastp -query $wd/coral_viruses_protein_DB.faa -db $db/VFDB_db -out $out/coral_VFs_blast.out.tsv -outfmt 6 -evalue 10e-5
 ```
