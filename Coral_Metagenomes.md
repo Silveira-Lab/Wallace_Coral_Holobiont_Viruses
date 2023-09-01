@@ -345,6 +345,23 @@ perl GLUVAB_polyN_v0.6.pl --threads 16 --genomes_file_1 $gf1
 ```
 
 # 13. Virus Taxonomy
+```bash
+vContact Documentation: https://bitbucket.org/MAVERICLab/vcontact2/src/master/
+```
+```bash
+# Make gene-to-genome mapping file
+vcontact2_gene2genome
+in=/path/to/my/faa/virus/DB/virus_DB.faa
+out=/path/to/output/directory/gene2genome.csv
+vcontact2_gene2genome -p $in -o $out -s Prodigal-FAA -k
+```
+```bash
+# Run vContact2
+proteins=/path/to/my/virus_DB.faa
+g2g=/path/to/gene2genome.csv
+out=/path/to/output/directory
+vcontact2 --raw-proteins $proteins --proteins-fp $g2g --db 'ProkaryoticViralRefSeq211-Merged' --output-dir $out
+```
 
 # 14. Bacterial and Viral Abundances
 ```bash
