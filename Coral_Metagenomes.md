@@ -138,8 +138,9 @@ sams=/path/to/bowtie/sam/files
 bams=/path/to/output/bam/directory
 for f in $sams/*.sam ; do
   name=$(basename $f .sam)
-  samtools sort -o $bams/${name}.align.sort.bam $sams/${name}.sam
-  samtools index ${name}.align.sort.bam
+  samtools sort -o $bams/${name}.align.sort.bam $sams/${name}.sam;
+  rm $sams/${name}.sam
+  samtools index $bams/${name}.align.sort.bam
 done
 ```
 # 6. Bin Bacterial MAGs (bMAGs)
