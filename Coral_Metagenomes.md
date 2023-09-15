@@ -149,7 +149,7 @@ done
 CONCOCT Documentation: https://concoct.readthedocs.io/en/latest/index.html#
 ```
 ```bash
-# Split the reads from your contgs into 10KB chunks and create a bed file
+# Split the reads contgs into 10KB chunks and create a bed file
 input=/path/to/contigs/fastas
 output=/path/to/output/directory
 for f in $input/*.contigs.fasta.gz; do
@@ -158,7 +158,7 @@ for f in $input/*.contigs.fasta.gz; do
 done
 ```
 ```bash
-# Generate the coverage table
+# Generate coverage table
 input1=/path/to/bed/files
 input2=/path/to/sorted/bam/files
 output=/path/to/output/directory
@@ -169,16 +169,53 @@ done
 ```
 ```bash
 # Run CONCOCT
+comp_file=/path/to/composition/files
+cov_file=/path/to/coverage/files
+output=/path/to/output/directory
+for f in $comp_file/*_contigs_10K.fa; do
+  name=$(basename $f _contigs_10K.fa)
+  concoct --composition_file $comp_file/${name}_contigs_10K.fa --coverage_file $cov_file/${name}_coverage_table.tsv -b $output/${name}_concoct-bins/ --threads 64
+done
 ```
 ```bash
 # Merge subcontig clustering into original contig clustering
+bins=/path/to/bins/directories
+for dir in $bins/*_concoct-bins; do
+	name=$(basename $dir _concoct-bins)
+	cd $dir
+	mv clustering_gt1000.csv ${name}_clustering_gt1000.csv
+	merge_cutup_clustering.py ${name}_clustering_gt1000.csv > ${name}_clustering_merged.csv
+done
 ```
 ```bash
-# Extract bins as individual FASTAs
+# Extract fasta bins
+contigs=/path/to/contigs/fastas
+bins=/path/to/concoct/output/directory
+out=/path/to/output/directory
+for f in $assemblies/*.fasta; do
+	name=$(basename $dir .fasta)
+	extract_fasta_bins.py $contigs/${name}_assembly.fasta $bins/${name}_concoct-bins/${name}_clustering_merged.csv --output_path $out/${sample}_concoct-bins/
+done
 ```
 <font size=”6”> MetaBAT 2 </font>
 ```bash
-#ENTER CODE HERE
+# Generate Depth Profiles
+bams=/path/to/bowtie2/mapping/bams/directory
+out=/path/to/output/directory
+for f in $bams/*.align.sort.bam; do
+	name=$(basename $f .align.sort.bam)
+	jgi_summarize_bam_contig_depths --outputDepth $out/${name}_depth.txt $bams/${name}.align.sort.bam
+done
+```
+```bash
+# Run MetaBAT 2
+contigs=/path/to/contigs/fastas
+depths=/path/to/depth_profiles
+out=/path/to/output/directory
+for f in $contigs/*.fasta; do
+	name=$(basename $f .fasta)
+	metabat2 -m 1500 -t 64 -i $f -a $depths/${name}_depth.txt -o $out/${name}_metabat2-bins
+done
 ```
 # 7. Refine Bacterial MAGs (bMAGs)
 ```bash
