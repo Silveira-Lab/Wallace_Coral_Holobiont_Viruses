@@ -146,8 +146,8 @@ done
 # 6. Bin Bacterial MAGs (bMAGs)
 <font size=”6”> CONCOCT </font>
 ```bash
-CONCOCT Documentation: https://concoct.readthedocs.io/en/latest/index.html#
-Note: don't try to run any of this with zipped files
+# CONCOCT Documentation: https://concoct.readthedocs.io/en/latest/index.html#
+# Note: don't try to run any of this with zipped files
 ```
 ```bash
 # Split the reads contgs into 10KB chunks and create a bed file
