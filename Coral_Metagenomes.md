@@ -225,7 +225,7 @@ done
 wd=/path/to/mapping/bam/files
 for i in $wd/*.align.sort.bam; do
     samtools idxstats $i > $i.idxstats
-    cut -f1,3 $i.idxstats > $i.counts
+    cut -f1,3 $i.idxstats > $i.counts.tsv
 done
 ```
 ```bash
