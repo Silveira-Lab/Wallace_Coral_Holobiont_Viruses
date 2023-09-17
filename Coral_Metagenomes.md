@@ -147,13 +147,14 @@ done
 <font size=”6”> CONCOCT </font>
 ```bash
 CONCOCT Documentation: https://concoct.readthedocs.io/en/latest/index.html#
+Note: don't try to run any of this with zipped files
 ```
 ```bash
 # Split the reads contgs into 10KB chunks and create a bed file
 input=/path/to/contigs/fastas
 output=/path/to/output/directory
-for f in $input/*.contigs.fasta.gz; do
-  name=$(basename $f .contigs.fasta.gz)
+for f in $input/*.contigs.fasta; do
+  name=$(basename $f .contigs.fasta)
   cut_up_fasta.py $f -c 10000 -o 0 --merge_last -b $output/${name}_contigs_10K.bed > $output/${name}_contigs_10K.fa
 done
 ```
@@ -189,12 +190,13 @@ done
 ```
 ```bash
 # Extract fasta bins
-contigs=/path/to/contigs/fastas
-bins=/path/to/concoct/output/directory
+assemblies=/path/to/contigs/fastas
+bins=/path/to/concoct/output/bins
 out=/path/to/output/directory
-for f in $assemblies/*.fasta; do
-	name=$(basename $dir .fasta)
-	extract_fasta_bins.py $contigs/${name}_assembly.fasta $bins/${name}_concoct-bins/${name}_clustering_merged.csv --output_path $out/${sample}_concoct-bins/
+for f in $assemblies/*.contigs.fasta; do
+	name=$(basename $f .contigs.fasta)
+	mkdir $out/${name}_bins
+	extract_fasta_bins.py $assemblies/${name}.contigs.fasta $bins/${name}_concoct-bins/${name}_clustering_merged.csv --output_path $out/${name}_bins
 done
 ```
 <font size=”6”> MetaBAT 2 </font>
@@ -215,6 +217,25 @@ out=/path/to/output/directory
 for f in $contigs/*.fasta; do
 	name=$(basename $f .fasta)
 	metabat2 -m 1500 -t 64 -i $f -a $depths/${name}_depth.txt -o $out/${name}_metabat2-bins
+done
+```
+<font size=”6”> MaxBin2 </font>
+```bash
+# Make abundance files from bam mapping outputs (must be tab-delimited format) - (contig header)\t(abundance)
+wd=/path/to/mapping/bam/files
+for i in $wd/*.align.sort.bam; do
+    samtools idxstats $i > $i.idxstats
+    cut -f1,3 $i.idxstats > $i.counts
+done
+```
+```bash
+# Run MaxBin2
+contigs=/path/to/contigs
+abundance=/path/to/abundance/files
+out=/path/to/output/directory
+for f in $contigs/*.contigs.fasta.gz; do
+	name=$(basename $f .contigs.fasta.gz)
+	run_MaxBin.pl -thread 64 -contig $f -out $out/${name} -abund $abundance/${name}.align.sort.bam.counts.tsv
 done
 ```
 # 7. Refine Bacterial MAGs (bMAGs)
