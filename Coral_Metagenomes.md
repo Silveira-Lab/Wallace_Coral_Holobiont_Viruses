@@ -240,7 +240,15 @@ done
 ```
 # 7. Refine Bacterial MAGs (bMAGs)
 ```bash
-#ENTER CODE HERE
+# Run metawrap bin refinement
+metabat_bins=/path/to/metabat/bins
+maxbin_bins=/path/to/maxbin/bins
+concoct_bins=/path/to/concoct/bins
+out=/path/to/output/directory
+for f in $concoct_bins/*_bMAGs; do
+	name=$(basename $f _bMAGs)
+	metawrap bin_refinement -o $out/${name}_bins -t 64 -A $concoct_bins/${name}_bMAGs -B $maxbin_bins/${name}_bMAGs -C $metabat_bins/${name}_bMAGs -c 20 -x 10
+done
 ```
 # 8. Obtain Viral Contigs
 ```bash
@@ -363,40 +371,80 @@ fasta=/path/to/concatenated/vMAGs/DEREP_vMAGs.fasta
 output=/path/to/output/directory
 checkv end_to_end $fasta $output -t 16 -d checkv-db-v1.4
 ```
-# 12. Virus Sequence Similarity Tree
+# 12. Phylogenomic Tree of Coral Viruses
 ```bash
 # GL-UVAB Documentation: https://sourceforge.net/projects/gluvab/files/
 ```
 <font size=”6”> Select High & Medium Quality Viruses for Tree </font> 
 ```bash
 # Make list of high & medium quality vMAGs using CheckV output & pull that list from original fasta
-# Make list of complete circular, high quality, and mediu quality vContigs using Vibrant output & pull that list from original fasta=
+# Make list of complete circular, high quality, and medium quality vContigs using Vibrant output & pull that list from original fasta
 ```
+<font size=”6”> Dereplicate Viral RefSeq with CheckV's rapid genome clustering based on pairwise ANI </font> 
+```bash
+# Create Blast Database
+out=/path/to/output/directory
+wd=/path/to/ViralRefSeq_1.1_2023-07-13
+makeblastdb -in $wd/viral.1.1.genomic.fna -dbtype nucl -out viral.1.1.genomic_db
+```
+```bash
+# Use megablast from blast+ package to perform all-vs-all blastn of sequences
+out=/path/to/output/directory
+wd=/path/to/ViralRefSeq_1.1_2023-07-13
+db=/path/to/ViralRefSeq_1.1_2023-07-13/blastdb
+blastn -query $wd/viral.1.1.genomic.fna -db $db/viral.1.1.genomic_db -outfmt '6 std qlen slen' -max_target_seqs 10000 -out $out/viral.1.1.genomic_blast.tsv -num_threads 32
+```
+```bash
+# Calculate pairwise ANI by combining local alignments between sequence pairs:
+blastout=/path/to/ViralRefSeq_1.1_2023-07-13/MIUVIG_Viral_RefSeq_2023-09-27
+anicalc.py -i $blastout/viral.1.1.genomic_blast.tsv -o $blastout/viral.1.1.genomic_ani.tsv
+```
+```bash
+# Perform UCLUST-like clustering using the MIUVIG recommended-parameters (95% ANI + 85% AF):
+wd=/path/to/ViralRefSeq_1.1_2023-07-13
+blastout=/path/to/ViralRefSeq_1.1_2023-07-13/MIUVIG_Viral_RefSeq_2023-09-27
+aniclust.py --fna $wd/viral.1.1.genomic.fna --ani $blastout/viral.1.1.genomic_ani.tsv --out $blastout/viral.1.1.genomic_clusters.tsv --min_ani 95 --min_tcov 85 --min_qcov 0
+```
+```bash
+# Grab Colum 1 (representative seqs) and make a list:
+awk '{print $1}' viral.1.1.genomic_clusters.tsv > MIUVIG_Viral_RefSeq_2023-09-27.tsv
+cat MIUVIG_Viral_RefSeq_2023-09-27.tsv | wc -l
+
+# Check for Unique ID's
+sort MIUVIG_Viral_RefSeq_2023-09-27.tsv | uniq > MIUVIG_Viral_RefSeq_2023-09-27_unique.tsv
+cat MIUVIG_Viral_RefSeq_2023-09-27_unique.tsv | wc -l
+
+# Create New Dereplicated Database
+wd=/path/to/ViralRefSeq_1.1_2023-07-13/MIUVIG_Viral_RefSeq_2023-09-27
+fasta=/path/to/ViralRefSeq_1.1_2023-07-13/viral.1.1.genomic.fna
+seqkit grep -f $wd/MIUVIG_Viral_RefSeq_2023-09-27_unique.tsv $fasta >> $wd/MIUVIG_Viral_RefSeq_2023-09-27_unique.fna
+```
+
 <font size=”6”> GL-UVAB Part 1 </font> 
 ```bash
 # GLUVAB Pt 1
-gf1=/path/to/ICTV/database/{ICTV_DB}.fasta 
-gf2=/path/to/concatentated/High&MediumQual/viruses/vContigs_med_high_qual.fasta
+gf1=/path/to/dereplicated/ViralRefSeq/database
+gf2=/path/to/HQ_MQ_viruses/CHOP_DEREP_HQMQ_viruses.fasta
 perl GLUVAB_polyN_v0.6.pl --threads 16 --genomes_file_1 $gf1 --genomes_file_2 $gf2
 ```
 ```bash
-# Select ICTV ID's that matched to viruses in my DB
-awk '{print $2}' GLUVAB_Scaffold_Recip_Scores.tsv > ALL_ICTV_forgluvab_unsorted_2.txt
+# Select RefSeq ID's that matched to viruses in my DB
+awk '{print $2}' GLUVAB_Scaffold_Recip_Scores.tsv > ALL_RefSeq_forgluvab_unsorted_2.txt
 # Make list of unique names
-sort ALL_ICTV_forgluvab_unsorted_2.txt | uniq > ALL_ICTV_forgluvab_unique_2.txt
-# Now grab those IDs from the ICTV database fasta file
-db=/path/to/ICTV/database/{ICTV_DB}.fasta
-seqkit grep -f ALL_ICTV_forgluvab_unique_2.txt $db > ALL_ICTV_forgluvab_unique_2.fna
+sort ALL_RefSeq_forgluvab_unsorted_2.txt | uniq > ALL_RefSeq_forgluvab_unique_2.txt
+# Now grab those IDs from the RefSeq database fasta file
+db=/path/to/RefSeq/database/MIUVIG_Viral_RefSeq_2023-09-27_unique.fna
+seqkit grep -f ALL_ICTV_forgluvab_unique_2.txt $db > ALL_RefSeq_forgluvab_unique_2.fna
 
-# Combine ICTV Viruses with Viral Database
-myphages=/path/to/All_High_Med_Qual_VIRUSES.fasta
-ictvphages=/path/to/ALL_ICTV_forgluvab_unique_2.fna
-cat $myphages $ictvphages >> High_Med_Qual_Viruses_x_ICTV.fasta
+# Combine RefSeq Viruses with My Viral Database
+myphages=/path/to/CHOP_DEREP_HQMQ_viruses.fasta
+RefSeqphages=/path/to/ALL_RefSeq_forgluvab_unique_2.fna
+cat $myphages $ictvphages >> HQMQ_CHoP_x_RefSeq.fasta
 ```
 <font size=”6”> GL-UVAB Part 2 </font>
 ```bash
 # GLUVAB Pt 2
-gf1=/path/to/High_Med_Qual_Viruses_x_ICTV.fasta
+gf1=/path/to/HQMQ_CHoP_x_RefSeq.fasta
 perl GLUVAB_polyN_v0.6.pl --threads 16 --genomes_file_1 $gf1
 ```
 ```bash
@@ -404,8 +452,81 @@ perl GLUVAB_polyN_v0.6.pl --threads 16 --genomes_file_1 $gf1
 ```
 
 # 13. Virus Taxonomy
+<font size=”6”> PTT (Phage Taxonomy Tool) </font>
 ```bash
-vContact Documentation: https://bitbucket.org/MAVERICLab/vcontact2/src/master/
+# PTT Documentation: https://github.com/AnantharamanLab/Kieft_and_Zhou_et_al._2020
+# For this, I created a new PTT_virus_taxonomy.tsv file with updated lineages
+```
+```bash
+# Run PTT
+FAA=/path/to/coral/viruses/proteindb/my_viruses.faa
+python3 PTT.py -i $FAA -f prot
+conda deactivate
+```
+<font size=”6”> Kaiju </font>
+```bash
+# Kaiju Documentation: https://github.com/bioinformatics-centre/kaiju
+# Using Viral RefSeq for the DB here for updated taxonomy
+```
+```bash
+# Run Kaiju
+nodes=/path/to/kaiju-db/viral_refseq_091523/nodes.dmp
+fmi=/path/to/kaiju-db/viral_refseq_091523/viruses/kaiju_db_viruses.fmi
+input=/path/to/my_db/HQMQ_CHoP_x_RefSeq.fasta
+out=/path/to/output/directory
+kaiju -t $nodes -f $fmi -i $input -v -z 24 -o $out/kaiju_HQMQ.out
+```
+```bash
+# Run Kaiju-addTaxonNames
+nodes=/path/to/kaiju-db/viral_refseq_091523/nodes.dmp
+names=/path/to/kaiju-db/viral_refseq_091523/names.dmp
+input=/path/to/kaiju/output/kaiju_HQMQ.out
+out=/path/to/output/directory
+kaiju-addTaxonNames -t $nodes -n $names -i $input -o $out/kaiju_taxonnames_HQMQ.tsv
+```
+<font size=”6”> Kraken </font>
+```bash
+# Kraken Documentation: https://github.com/DerrickWood/kraken
+```
+```bash
+# Download Taxonomy
+DBNAME=/path/to/ViralRefSeq_1.1_2023-07-13/KRAKEN2_DB/ViralRefSeq_7.13.23
+kraken2-build --download-taxonomy --db $DBNAME
+
+# Download Library
+DBNAME=/path/to/ViralRefSeq_1.1_2023-07-13/KRAKEN2_DB/ViralRefSeq_7.13.23
+kraken2-build  --download-library viral --db $DBNAME
+
+# Build DB
+DBNAME=/path/to/ViralRefSeq_1.1_2023-07-13/KRAKEN2_DB/ViralRefSeq_7.13.23
+kraken2-build --build --db $DBNAME
+```
+```bash
+# Classify Viruses
+db=/path/to/ViralRefSeq_1.1_2023-07-13/KRAKEN2_DB/ViralRefSeq_7.13.23
+seqs=/path/to/HQMQ_CHoP_x_RefSeq.fasta
+out=/path/to/output/directory
+kraken2 --db $db $seqs \
+--classified-out $out/classified_viruses.out.fq  \
+--unclassified-out $out/unclassified_viruses.out.fq \
+--output $out/CHoP_viruses.kraken2.txt --report $out/CHoP_viruses.kraken2_report 
+```
+```bash
+# Get Viral Lineages and Use Tax ID to Pair Viruses with their Linneages assigned by Kraken
+# https://github.com/zyxue/ncbitax2lin
+# Use Tax Dump to Get Lineages
+taxdump=/path/to/taxdump/nodes.dmp
+names=/path/to/taxdump/names.dmp
+out=/path/to/output/directory/ncbi_lineages.csv.gz
+ncbitax2lin --nodes-file $taxdump --names-file $names --output $out
+
+# Next, filter ncbi_lineages.csv.gz output in R and use tax_id from Kraken to match lineages with taxa
+```
+
+<font size=”6”> vContact </font>
+```bash
+# vContact Documentation: https://bitbucket.org/MAVERICLab/vcontact2/src/master/
+# Note: this runs on old taxonomy
 ```
 ```bash
 # Make gene-to-genome mapping file
