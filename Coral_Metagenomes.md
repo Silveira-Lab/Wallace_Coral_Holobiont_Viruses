@@ -5,16 +5,17 @@
 3. Classify Reads - <i>Kaiju</i>
 4. Assemble Reads - <i>SPAdes</i>
 5. Map Reads to Contigs - <i>Bowtie 2</i>
-6. Bin bMAGs - <i>CONCOCT, MetaBAT 2</i>
-7. Refine bMAGs - <i>CONCOCT, MetaBAT 2</i>
+6. Bin bMAGs - <i>CONCOCT, MaxBin 2, MetaBAT 2</i>
+7. Refine & Dereplicate bMAGs - <i>MetaWRAP, anvi'o</i>
 8. Obtain Viral Contigs - <i>Vibrant</i>
 9. Bin vMAGs - <i>vRhyme</i>
 10. Dereplicate Viruses - <i>BlastN, Virathon</i>
-11. Viral Metagenome Assembled Genomes Quality - <i>CheckV</i>
+11. Assess vMAG Quality - <i>CheckV</i>
 12. Virus Sequence Similarity Tree - <i>GL-UVAB</i>
-13. Virus Taxonomy - <i>vConTACT2.0</i>
+13. Virus Taxonomy - <i>PTT, Kaiju, Kraken, vContact2.0</i>
 14. Bacterial and Viral Abundances - <i>Smalt</i>
 15. Virulence Factor Analysis - <i>BlastP</i>
+16. Linking Viruses and their Hosts
  
 # 1. Download Coral Metagenomes
 ```bash
@@ -238,9 +239,9 @@ for f in $contigs/*.contigs.fasta.gz; do
 	run_MaxBin.pl -thread 64 -contig $f -out $out/${name} -abund $abundance/${name}.align.sort.bam.counts.tsv
 done
 ```
-# 7. Refine Bacterial MAGs (bMAGs)
+# 7. Refine and Dereplicate Bacterial MAGs (bMAGs)
 ```bash
-# Run metawrap bin refinement
+# Run metawrap bin refinement https://github.com/bxlab/metaWRAP
 metabat_bins=/path/to/metabat/bins
 maxbin_bins=/path/to/maxbin/bins
 concoct_bins=/path/to/concoct/bins
@@ -249,6 +250,14 @@ for f in $concoct_bins/*_bMAGs; do
 	name=$(basename $f _bMAGs)
 	metawrap bin_refinement -o $out/${name}_bins -t 64 -A $concoct_bins/${name}_bMAGs -B $maxbin_bins/${name}_bMAGs -C $metabat_bins/${name}_bMAGs -c 20 -x 10
 done
+```
+```bash
+# Run anvi'o dereplication using a 95% similarity threshold https://anvio.org/help/7/programs/anvi-dereplicate-genomes/
+# Note bMAGs_list.tsv is a tab-separated file with two columns. The first column is the name of the bin and the second column is the path to the fasta file.
+
+bins_list=/path/to/bMAGs_list.tsv
+out=/path/to/output/directory
+anvi-dereplicate-genomes -f $bins_list -o $out --program fastANI --similarity-threshold 0.95
 ```
 # 8. Obtain Viral Contigs
 ```bash
@@ -361,7 +370,7 @@ Virathon.py --genome_files $vMAGs --make_pops True --threads 24
 fna=/path/to/remaining/vCongigs/ALL_VIRUSES_mag-contigs_removed.fna  
 python3 Virathon.py --genome_files $fna --make_pops True --threads 24
 ```
-# 11. Viral Metagenome Assembled Genomes Quality
+# 11. Assess vMAG Quality
 ```bash
 # CheckV Documentation: https://bitbucket.org/berkeleylab/checkv/src/master/
 ```
