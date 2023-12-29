@@ -12,10 +12,10 @@
 10. Dereplicate Viruses - <i>BlastN, Virathon</i>
 11. Assess vMAG Quality - <i>CheckV</i>
 12. Virus Sequence Similarity Tree - <i>GL-UVAB</i>
-13. Virus Taxonomy - <i>PTT, Kaiju, Kraken, vContact2.0</i>
+13. Virus Taxonomy - <i>PTT, Kaiju, Kraken</i>
 14. Bacterial and Viral Abundances - <i>Smalt</i>
 15. Virulence Factor Analysis - <i>BlastP</i>
-16. Linking Viruses and their Hosts
+16. Linking Viruses and their Hosts - <i>MinCED, BlastN, Minimap2, CheckV</i>
  
 # 1. Download Coral Metagenomes
 ```bash
@@ -532,26 +532,6 @@ ncbitax2lin --nodes-file $taxdump --names-file $names --output $out
 # Next, filter ncbi_lineages.csv.gz output in R and use tax_id from Kraken to match lineages with taxa
 ```
 
-<font size=”6”> vContact </font>
-```bash
-# vContact Documentation: https://bitbucket.org/MAVERICLab/vcontact2/src/master/
-# Note: this runs on old taxonomy
-```
-```bash
-# Make gene-to-genome mapping file
-vcontact2_gene2genome
-in=/path/to/my/faa/virus/DB/virus_DB.faa
-out=/path/to/output/directory/gene2genome.csv
-vcontact2_gene2genome -p $in -o $out -s Prodigal-FAA -k
-```
-```bash
-# Run vContact2
-proteins=/path/to/my/virus_DB.faa
-g2g=/path/to/gene2genome.csv
-out=/path/to/output/directory
-vcontact2 --raw-proteins $proteins --proteins-fp $g2g --db 'ProkaryoticViralRefSeq211-Merged' --output-dir $out
-```
-
 # 14. Bacterial and Viral Abundances
 ```bash
 Smalt Documentation: https://github.com/rcallahan/smalt
@@ -608,3 +588,52 @@ db=/path/to/VFDB/blastdb
 out=/path/to/output/directory
 blastp -query $wd/coral_viruses_protein_DB.faa -db $db/VFDB_db -out $out/coral_VFs_blast.out.tsv -outfmt 6 -evalue 10e-5
 ```
+
+# 15. Phage Host Linkages
+<font size=”6”> CRISPR spacer linkages </font>
+```bash
+# Run minced on bmags
+minced=/path/to/minced
+bacteria=/path/to/all/bacterial/genomes/and/MAGs/bacteria.fasta
+$minced -spacers $bmags ALL_BACTERIA_CRISPR.txt ALL_BACTERIA_CRISPR.gff
+```
+```bash
+# Make blast DB of Spacers
+makeblastdb=/path/to/makeblastdb
+wd=/path/to/CRISPR/spacers
+out=/path/to/output/directory
+$makeblastdb -in $wd/ALL_BACTERIA_CRISPR_spacers.fa -out $out/ALL_BACTERIA_CRISPR_spacers -dbtype 'nucl' -hash_index
+```
+```bash
+# BlastN CRISPR spacers against viral database
+blastn=/path/to/blastn
+viruses=/path/to/final/viral/database
+blastdb=/path/to/CRISPR/spacers/db
+out=/path/to/output/directory
+$blastn -query $viruses/GCVDB.fasta -db $blastdb/ALL_BACTERIA_CRISPR_spacers -max_target_seqs 1 -task "blastn-short" -outfmt 6 > $out/CRISPR_spacer_links.BLASTn.tsv
+```
+
+<font size=”6”> Provirus linkages </font>
+```bash
+# Map GCVDB viruses to Bacteria using Minimap2
+minimap=/path/to/minimap2
+bmags=/path/to/bMAGSs.fa
+viruses=/path/to/final/viral/database/GCVDB.fasta
+out=/path/to/output/directory
+$minimap -c $bmags $viruses > $out/minimap_viruses_to_bmag_contigs.paf
+
+# Pull out bacterial contigs that mapped to viruses --> provirus_contigs.fa
+```
+```bash
+# Search for Proviruses with CheckV
+checkv=/path/to/checkv
+fasta=/path/to/provirus_contigs.fa
+output=/path/to/output/directory
+db=/path/to/checkv-db-v1.4
+$checkv end_to_end $fasta $output -t 16 -d $db
+
+# Check 'contamination.tsv' for proviruses
+```
+
+
+
